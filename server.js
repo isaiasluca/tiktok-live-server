@@ -1,36 +1,46 @@
 const express = require("express");
-const TikTokLive = require("tiktok-live");
+const { WebcastPushConnection } = require("tiktok-live-connector");
+
 const app = express();
-
-const username = process.env.TIKTOK_USERNAME;
-
-app.get("/", (req, res) => {
-  res.send("Servidor TikTok Live funcionando! ✔");
-});
-
-// cria conexão
-let tiktok = new TikTokLive(username, {
-  enableWebsocket: true,
-});
-
-// conecta
-tiktok.connect()
-  .then(() => console.log("🔥 Conectado ao TikTok Live!"))
-  .catch(err => console.error("❌ Erro ao conectar:", err));
-
-// eventos
-tiktok.on("chat", msg => {
-  console.log(`💬 ${msg.uniqueId}: ${msg.comment}`);
-});
-
-tiktok.on("gift", gift => {
-  console.log(`🎁 Gift: ${gift.giftName} x${gift.repeatCount}`);
-});
-
-tiktok.on("like", like => {
-  console.log(`❤️ Like: ${like.uniqueId} (${like.likeCount})`);
-});
-
-// Express
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server ON na porta ${PORT}`));
+
+const tiktokUsername = process.env.TIKTOK_USERNAME;
+
+// Rota básica
+app.get("/", (req, res) => {
+    res.send("Servidor TikTok Live conectado!");
+});
+
+// Conectar ao TikTok
+const connection = new WebcastPushConnection(tiktokUsername, {
+    enableExtendedGiftInfo: true
+});
+
+// Evento: Conectou
+connection.connect()
+    .then(state => {
+        console.log(`🎉 Conectado ao TikTok Live de @${state.roomInfo.owner.nickname}`);
+    })
+    .catch(err => {
+        console.error("❌ Erro ao conectar:", err);
+    });
+
+// Evento: Comentário
+connection.on("chat", data => {
+    console.log(`💬 ${data.uniqueId}: ${data.comment}`);
+});
+
+// Evento: Like
+connection.on("like", data => {
+    console.log(`❤️ ${data.uniqueId} deu ${data.likeCount} likes`);
+});
+
+// Evento: Gift
+connection.on("gift", data => {
+    console.log(`🎁 ${data.uniqueId} enviou ${data.giftName}`);
+});
+
+// Inicia servidor Express
+app.listen(PORT, () => {
+    console.log(`Servidor rodando na porta ${PORT}`);
+});
